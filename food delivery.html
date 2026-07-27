@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickBite | Food Menu</title>
+  <!-- Bootstrap 5 CSS & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body class="bg-light">
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-dark bg-dark sticky-top shadow-sm">
+    <div class="container">
+      <a class="navbar-brand fw-bold text-warning" href="#"><i class="bi bi-bag-heart-fill me-2"></i>QuickBite</a>
+      <button class="btn btn-warning position-relative fw-semibold" type="button" data-bs-toggle="offcanvas" data-bs-target="#cartDrawer">
+        <i class="bi bi-cart3 me-1"></i> Cart
+        <span id="cartBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="container py-5">
+    <div class="text-center mb-5">
+      <h1 class="fw-bold">Popular Dishes</h1>
+      <p class="text-muted">Choose from our favorite selections and order directly</p>
+    </div>
+
+    <!-- Empty container: JavaScript fills this automatically! -->
+    <div id="foodGrid" class="row g-4"></div>
+  </main>
+
+  <!-- Offcanvas Cart Drawer -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="cartDrawer">
+    <div class="offcanvas-header border-bottom">
+      <h5 class="offcanvas-title fw-bold"><i class="bi bi-cart3 me-2"></i>Your Cart</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+      <div id="cartItemsList" class="flex-grow-1"></div>
+      <div class="border-top pt-3 mt-auto">
+        <div class="d-flex justify-content-between fs-5 fw-bold mb-3">
+          <span>Total:</span>
+          <span id="cartTotal">₹0.00</span>
+        </div>
+        <button id="checkoutBtn" class="btn btn-warning w-100 py-2 fw-bold" disabled>Checkout Now</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+  // 1. DATA: 6 items defined cleanly in one array
+  const products = [
+    { id: '1', name: 'Artisan Cheeseburger', price: 199, desc: 'veg patty, aged cheddar, special sauce, and lettuce on a bun.', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600' },
+    { id: '2', name: 'Farmhouse Supreme', price: 150, desc: 'Fresh mozzarella, hand-sliced pepperoni, and rich tomato sauce.', img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600' },
+    { id: '3', name: 'Ramen Bowl', price: 120, desc: 'Fresh veggies, noodles, quinoa, and sesame dressing.', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSGN-oPbPjyet0xo0SHREVaW9M46_3wMb7Il6RYebJOVVPKRzMCjQm4CI0&s=10' },
+    { id: '4', name: 'Pasta Carbonara', price: 175, desc: 'Spaghetti with crispy guanciale, egg yolk, and Pecorino Romano.', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTFDLbC0hzK5LIuCPqIJXXNCIAvwpOt6fP3VmL1UN8Q-vwI75nM339NfPQ&s=10' },
+    { id: '5', name: 'Momos', price: 90, desc: '8 pieces of assorted momos  with fresh chutney.', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQAA9tvImHvVwqGmcQ1A6NtBSiXtLImpqTDkghOCDvE4Q&s=10' },
+    { id: '6', name: 'Ice Cream Sundae', price: 100, desc: 'Vanilla bean ice cream topped with mixed berry compote and mint.', img: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=600' }
+  ];
+
+  let cart = [];
+
+  // DOM & Bootstrap Helper Instances
+  const toastElement = document.getElementById('cartToast');
+  const toastMessage = document.getElementById('toastMessage');
+  const cartToast = new bootstrap.Toast(toastElement);
+
+  // 2. RENDER PRODUCT CARDS
+  function renderProducts() {
+    const grid = document.getElementById('foodGrid');
+    grid.innerHTML = products.map(item => `
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm">
+          <img src="${item.img}" class="card-img-top" style="height: 180px; object-fit: cover;" alt="${item.name}">
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title fw-bold">${item.name}</h5>
+            <p class="card-text text-muted small flex-grow-1">${item.desc}</p>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+              <span class="fs-5 fw-bold text-dark">$${item.price.toFixed(2)}</span>
+              <button class="btn btn-warning" onclick="addToCart('${item.id}')">
+                <i class="bi bi-plus-lg me-1"></i>Add to Cart
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // 3. CART OPERATIONS
+  function addToCart(id) {
+    const product = products.find(p => p.id === id);
+    const existing = cart.find(i => i.id === id);
+
+    if (existing) {
+      existing.quantity += 1;
+    } else {
+      cart.push({ ...product, quantity: 1 });
+    }
+    
+    renderCart();
+    showToast(`Added "${product.name}" to cart!`);
+  }
+
+  function updateQuantity(id, change) {
+    const item = cart.find(i => i.id === id);
+    if (item) {
+      item.quantity += change;
+      if (item.quantity <= 0) cart = cart.filter(i => i.id !== id);
+    }
+    renderCart();
+  }
+
+  // 4. RENDER CART DRAWER
+  function renderCart() {
+    const totalCount = cart.reduce((sum, i) => sum + i.quantity, 0);
+    const totalPrice = cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+
+    document.getElementById('cartBadge').textContent = totalCount;
+    document.getElementById('cartTotal').textContent = `$${totalPrice.toFixed(2)}`;
+    document.getElementById('checkoutBtn').disabled = cart.length === 0;
+
+    const list = document.getElementById('cartItemsList');
+    if (cart.length === 0) {
+      list.innerHTML = `<div class="text-center text-muted mt-5"><i class="bi bi-cart-x fs-1 d-block mb-2"></i>Cart is empty</div>`;
+    } else {
+      list.innerHTML = cart.map(item => `
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+          <div>
+            <h6 class="mb-0 fw-bold">${item.name}</h6>
+            <small class="text-muted">$${item.price.toFixed(2)} x ${item.quantity}</small>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-sm btn-outline-secondary px-2" onclick="updateQuantity('${item.id}', -1)">-</button>
+            <span class="fw-semibold">${item.quantity}</span>
+            <button class="btn btn-sm btn-outline-secondary px-2" onclick="updateQuantity('${item.id}', 1)">+</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // Helper: Show Toast
+  function showToast(msg) {
+    toastMessage.textContent = msg;
+    cartToast.show();
+  }
+
+  // 5. CHECKOUT EVENT (Triggers Order Placed Pop-up)
+  document.getElementById('checkoutBtn').addEventListener('click', () => {
+    const total = document.getElementById('cartTotal').textContent;
+    
+    // Pop-up Alert
+    alert(`🎉 Order Placed Successfully!\nTotal Paid: ${total}\nYour food will be delivered shortly.`);
+    
+    // Reset Cart
+    cart = [];
+    renderCart();
+
+    // Close the Cart Drawer
+    const drawerElement = document.getElementById('cartDrawer');
+    const drawerInstance = bootstrap.Offcanvas.getInstance(drawerElement);
+    if (drawerInstance) drawerInstance.hide();
+  });
+
+  // Startup
+  renderProducts();
+  renderCart();
+</script>
+</body>
+</html>
